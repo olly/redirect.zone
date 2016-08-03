@@ -1,0 +1,6 @@
+[package]
+name = "redirect-zone"
+version = "0.1.0"
+authors = ["Olly Legg <olly@51degrees.net>"]
+
+[dependencies]
