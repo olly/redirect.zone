@@ -1,21 +1,28 @@
 mod configuration;
 
+extern crate hyper;
+extern crate resolve;
 extern crate url;
 
 use regex::Regex;
+use resolve::config::default_config;
+use resolve::resolver::DnsResolver;
+use resolve::record::Txt;
+use std;
 use std::collections::HashMap;
+use std::str;
 use url::Url;
 
 #[derive(Debug)]
 #[derive(PartialEq)]
-pub struct RedirectConfiguration {
+struct RedirectConfiguration {
     pub target: Url,
     pub replace_path: bool,
 }
 
 #[derive(Debug)]
 #[derive(PartialEq)]
-pub enum RedirectConfigurationParseError {
+enum RedirectConfigurationParseError {
     MissingVersion,
     InvalidVersion,
     UnsupportedVersion(u8),
@@ -24,7 +31,7 @@ pub enum RedirectConfigurationParseError {
 }
 
 impl RedirectConfiguration {
-    pub fn parse(config: &str) -> Result<RedirectConfiguration, RedirectConfigurationParseError> {
+    fn parse(config: &str) -> Result<RedirectConfiguration, RedirectConfigurationParseError> {
         let delimiter = Regex::new(r";(\s*)").unwrap();
 
         let fields = delimiter.split(config).fold(HashMap::new(), |mut memo, field| {
@@ -46,6 +53,79 @@ impl RedirectConfiguration {
             target: target,
             replace_path: replace_path,
         });
+    }
+}
+
+pub struct Redirector {
+    resolver: DnsResolver
+}
+
+pub enum RedirectorError {
+    ResolverError,
+}
+
+type ResolverError = std::io::Error;
+
+pub struct Redirect {
+
+}
+
+impl Redirect {
+    pub fn target_from(&self, source: hyper::uri::RequestUri) -> String {
+        return "http://google.com".to_string();
+    }
+}
+
+impl Redirector {
+    pub fn new() -> Redirector {
+        let config = match default_config() {
+            Ok(config) => config,
+            Err(e) => {
+                // TODO: this fails with no network.
+                panic!("Failed to load system configuration: {}", e);
+            }
+        };
+
+        let resolver = match DnsResolver::new(config) {
+            Ok(resolver) => resolver,
+            Err(e) => {
+                panic!("Failed to create DNS resolver: {}", e);
+            }
+        };
+
+        return Redirector { resolver: resolver }
+    }
+
+    pub fn lookup(&self, hostname: &str) -> Result<Redirect, RedirectorError> {
+        let record = format!("_redirect.{}", hostname);
+        println!("lookup: {}", record);
+
+        let records = self.resolve(record.as_str());
+        match records {
+            Err(_) => return Err(RedirectorError::ResolverError),
+            Ok(records) => {
+                for record in records {
+                    let x = RedirectConfiguration::parse(record.as_str());
+                    match x {
+                        Ok(x) => println!("{}", x.target),
+                        Err(e) => println!("{:?}", e),
+                    }
+                }
+            }
+        }
+
+        return Ok(Redirect{});
+    }
+
+    fn resolve(&self, record: &str) -> Result<Vec<String>, ResolverError> {
+        // TODO: can I hold onto enough here, to use &strs rather than String?
+        // TODO: unwrap
+        match self.resolver.resolve_record::<Txt>(record) {
+            Ok(records) => {
+                Ok(records.iter().map(|record| str::from_utf8(&record.data).unwrap().to_string()).collect())
+            }
+            Err(e) => return Err(e),
+        }
     }
 }
 
