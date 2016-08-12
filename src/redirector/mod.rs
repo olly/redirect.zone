@@ -56,8 +56,27 @@ impl RedirectConfiguration {
     }
 }
 
+trait Resolver {
+    fn resolve(&self, record: &str) -> Result<Vec<String>, ResolverError>;
+}
+
+impl Resolver for DnsResolver {
+    fn resolve(&self, record: &str) -> Result<Vec<String>, ResolverError> {
+        // TODO: can I hold onto enough here, to use &strs rather than String?
+        // TODO: unwrap
+        match self.resolve_record::<Txt>(record) {
+            Ok(records) => {
+                Ok(records.iter().map(|record| str::from_utf8(&record.data).unwrap().to_string()).collect())
+            }
+            Err(e) => return Err(e),
+        }
+    }
+}
+
 pub struct Redirector {
-    resolver: DnsResolver
+    // TODO: I think this could probably be a reference, but I couldn't figure
+    // out the ownership.
+    resolver: Box<Resolver>,
 }
 
 pub enum RedirectorError {
@@ -93,14 +112,14 @@ impl Redirector {
             }
         };
 
-        return Redirector { resolver: resolver }
+        return Redirector { resolver: Box::new(resolver) }
     }
 
     pub fn lookup(&self, hostname: &str) -> Result<Redirect, RedirectorError> {
         let record = format!("_redirect.{}", hostname);
         println!("lookup: {}", record);
 
-        let records = self.resolve(record.as_str());
+        let records = self.resolver.resolve(record.as_str());
         match records {
             Err(_) => return Err(RedirectorError::ResolverError),
             Ok(records) => {
@@ -115,17 +134,6 @@ impl Redirector {
         }
 
         return Ok(Redirect{});
-    }
-
-    fn resolve(&self, record: &str) -> Result<Vec<String>, ResolverError> {
-        // TODO: can I hold onto enough here, to use &strs rather than String?
-        // TODO: unwrap
-        match self.resolver.resolve_record::<Txt>(record) {
-            Ok(records) => {
-                Ok(records.iter().map(|record| str::from_utf8(&record.data).unwrap().to_string()).collect())
-            }
-            Err(e) => return Err(e),
-        }
     }
 }
 
