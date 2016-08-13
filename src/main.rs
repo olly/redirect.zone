@@ -47,8 +47,8 @@ fn handler(request: Request, mut response: Response) {
     };
 
     match request.uri {
-        AbsolutePath(_) => {
-            let target = redirect.target_from(request.uri);
+        AbsolutePath(path) => {
+            let target = redirect.target_from(path.as_str()).into_string();
 
             *response.status_mut() = hyper::status::StatusCode::MovedPermanently;
             response.headers_mut().set(hyper::header::Location(target));

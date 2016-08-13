@@ -85,8 +85,14 @@ impl Redirect {
         });
     }
 
-    pub fn target_from(&self, source: hyper::uri::RequestUri) -> String {
-        return self.target.to_string();
+    pub fn target_from(&self, source: &str) -> Url {
+        if self.replace_path {
+            let mut target = self.target.clone();
+            target.set_path(source);
+            return target;
+        } else {
+            return self.target.clone();
+        }
     }
 }
 
@@ -124,11 +130,13 @@ impl Redirector {
 
 #[cfg(test)]
 mod tests {
+    extern crate hyper;
     extern crate url;
 
-    use Redirect;
-    use RedirectParseError::*;
+    use redirector::Redirect;
+    use redirector::RedirectParseError::*;
     use url::ParseError;
+    use url::Url;
 
     #[test]
     fn it_handles_missing_version() {
@@ -167,5 +175,19 @@ mod tests {
 
         let configuration = Redirect::parse("v=1; target=https://google.com; replace_path=true").unwrap();
         assert_eq!(true, configuration.replace_path);
+    }
+
+    #[test]
+    fn it_returns_target_if_replace_path_is_false() {
+        let source = "/";
+        let redirect = Redirect{target: Url::parse("https://example.com/test/").unwrap(), replace_path: false};
+        assert_eq!("https://example.com/test/", redirect.target_from(source))
+    }
+
+    #[test]
+    fn it_returns_target_with_replaced_path_if_replace_path_is_true() {
+        let source = "/source-path";
+        let redirect = Redirect{target: Url::parse("https://example.com/test/").unwrap(), replace_path: true};
+        assert_eq!("https://example.com/source-path", redirect.target_from(source))
     }
 }
