@@ -1,5 +1,6 @@
 extern crate hyper;
 extern crate env_logger;
+extern crate rand;
 extern crate regex;
 extern crate resolve;
 extern crate url;
@@ -7,8 +8,9 @@ extern crate url;
 use hyper::header::Host;
 use hyper::server::{Server, Request, Response};
 use hyper::uri::RequestUri::AbsolutePath;
+use rand::{thread_rng, Rng};
 
-pub mod redirector;
+mod redirector;
 use redirector::Redirector;
 
 macro_rules! bad_request(
@@ -31,28 +33,31 @@ fn handler(request: Request, mut response: Response) {
     println!("path: {}", request.uri);
 
     let redirector = Redirector::new();
-    let redirect = redirector.lookup(hostname);
+    let redirects = redirector.lookup(hostname).ok().unwrap(); // TODO
 
-    match redirect {
-        Err(_) => {
-            // TODO: bad request
-            return
-        },
-        Ok(redirect) => {
-            match request.uri {
-                AbsolutePath(_) => {
-                    let target = redirect.target_from(request.uri);
+    let valid_redirects: Vec<_> = redirects.into_iter().filter_map(|redirect| redirect.ok()).collect();
 
-                    *response.status_mut() = hyper::status::StatusCode::MovedPermanently;
-                    response.headers_mut().set(hyper::header::Location(target));
-                    return;
-                },
-                _ => {
-                    return;
-                }
-            };
+    let redirect = match valid_redirects.len() {
+        0 => bad_request!(response, "No Valid Redirect"), // TODO
+        1 => valid_redirects.get(0).unwrap(), // TODO: unwrap
+        _ => {
+            let mut random = thread_rng();
+            random.choose(&valid_redirects).unwrap()
         },
-    }
+    };
+
+    match request.uri {
+        AbsolutePath(_) => {
+            let target = redirect.target_from(request.uri);
+
+            *response.status_mut() = hyper::status::StatusCode::MovedPermanently;
+            response.headers_mut().set(hyper::header::Location(target));
+            return;
+        },
+        _ => {
+            return;
+        }
+    };
 }
 
 fn main() {
