@@ -120,7 +120,7 @@ impl Redirector {
         let record = format!("_redirect.{}", hostname);
         println!("lookup: {}", record);
 
-        let records = self.resolver.resolve(record.as_str());
+        let records = self.resolver.resolve(&record);
         match records {
             Err(_) => return Err(RedirectorError::ResolverError),
             Ok(records) => return Ok(records.iter().map(|record| Redirect::parse(record)).collect()),

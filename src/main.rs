@@ -5,10 +5,12 @@ extern crate regex;
 extern crate resolve;
 extern crate url;
 
-use hyper::header::Host;
+use hyper::header;
 use hyper::server::{Server, Request, Response};
 use hyper::uri::RequestUri::AbsolutePath;
 use rand::{thread_rng, Rng};
+use url::Host;
+use url::Host::Domain;
 
 mod redirector;
 use redirector::Redirector;
@@ -22,18 +24,22 @@ macro_rules! bad_request(
 );
 
 fn handler(request: Request, mut response: Response) {
-    let hostname = match request.headers.get::<Host>() {
+    let host = match request.headers.get::<header::Host>() {
         None => {
-            bad_request!(response, "No Hostname")
+            bad_request!(response, "Unknown Host")
         },
         // TODO: what does ref do? it compile without. do I need it?
-        Some(ref host) => host.hostname.as_str()
+        // TODO: unwrap
+        Some(header) => Host::parse(&header.hostname).ok().unwrap()
     };
 
-    println!("path: {}", request.uri);
+    let domain: String = match host {
+        Domain(domain) => domain,
+        _ => bad_request!(response, "Invalid Host")
+    };
 
     let redirector = Redirector::new();
-    let redirects = redirector.lookup(hostname).ok().unwrap(); // TODO
+    let redirects = redirector.lookup(&domain).ok().unwrap(); // TODO
 
     let valid_redirects: Vec<_> = redirects.into_iter().filter_map(|redirect| redirect.ok()).collect();
 
@@ -48,7 +54,7 @@ fn handler(request: Request, mut response: Response) {
 
     match request.uri {
         AbsolutePath(path) => {
-            let target = redirect.target_from(path.as_str()).into_string();
+            let target = redirect.target_from(&path).into_string();
 
             *response.status_mut() = hyper::status::StatusCode::MovedPermanently;
             response.headers_mut().set(hyper::header::Location(target));
