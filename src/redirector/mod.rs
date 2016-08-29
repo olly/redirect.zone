@@ -190,13 +190,17 @@ mod tests {
     fn it_returns_target_if_replace_path_is_false() {
         let source = "/";
         let redirect = Redirect{target: Url::parse("https://example.com/test/").unwrap(), replace_path: false};
-        assert_eq!("https://example.com/test/", redirect.target_from(source))
+
+        let expected = Url::parse("https://example.com/test/").unwrap();
+        assert_eq!(expected, redirect.target_from(source))
     }
 
     #[test]
     fn it_returns_target_with_replaced_path_if_replace_path_is_true() {
         let source = "/source-path";
         let redirect = Redirect{target: Url::parse("https://example.com/test/").unwrap(), replace_path: true};
-        assert_eq!("https://example.com/source-path", redirect.target_from(source))
+
+        let expected = Url::parse("https://example.com/source-path").unwrap();
+        assert_eq!(expected, redirect.target_from(source))
     }
 }
