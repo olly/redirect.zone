@@ -1,6 +1,5 @@
 mod configuration;
 
-extern crate hyper;
 extern crate resolve;
 extern crate url;
 
@@ -141,7 +140,6 @@ impl Redirector {
 
 #[cfg(test)]
 mod tests {
-    extern crate hyper;
     extern crate url;
 
     use redirector::Redirect;
