@@ -1,6 +1,5 @@
 extern crate hyper;
 extern crate env_logger;
-extern crate rand;
 extern crate regex;
 extern crate resolve;
 extern crate url;
@@ -8,12 +7,12 @@ extern crate url;
 use hyper::header;
 use hyper::server::{Server, Request, Response};
 use hyper::uri::RequestUri::AbsolutePath;
-use rand::{thread_rng, Rng};
 use url::Host;
 use url::Host::Domain;
 
 mod redirector;
 use redirector::Redirector;
+use redirector::RedirectorError;
 
 macro_rules! bad_request(
     ($response:ident, $text:tt) => {{
@@ -39,31 +38,25 @@ fn handler(request: Request, mut response: Response) {
     };
 
     let redirector = Redirector::new();
-    let redirects = redirector.lookup(&domain).ok().unwrap(); // TODO
+    let redirect = redirector.find(&domain);
+    match redirect {
+        Ok(redirect) => {
+            match request.uri {
+                AbsolutePath(path) => {
+                    let target = redirect.target_from(&path).into_string();
 
-    let valid_redirects: Vec<_> = redirects.into_iter().filter_map(|redirect| redirect.ok()).collect();
-
-    let redirect = match valid_redirects.len() {
-        0 => bad_request!(response, "No Valid Redirect"), // TODO
-        1 => valid_redirects.get(0).unwrap(), // TODO: unwrap
-        _ => {
-            let mut random = thread_rng();
-            random.choose(&valid_redirects).unwrap()
+                    *response.status_mut() = hyper::status::StatusCode::MovedPermanently;
+                    response.headers_mut().set(hyper::header::Location(target));
+                    return;
+                },
+                _ => {
+                    return;
+                }
+            };
         },
-    };
-
-    match request.uri {
-        AbsolutePath(path) => {
-            let target = redirect.target_from(&path).into_string();
-
-            *response.status_mut() = hyper::status::StatusCode::MovedPermanently;
-            response.headers_mut().set(hyper::header::Location(target));
-            return;
-        },
-        _ => {
-            return;
-        }
-    };
+        Err(RedirectorError::ResolverError) => bad_request!(response, "Resolver Error"),
+        Err(RedirectorError::NoValidRedirect) => bad_request!(response, "No Valid Redirect"),
+    }
 }
 
 fn main() {

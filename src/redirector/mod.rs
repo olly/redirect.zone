@@ -126,6 +126,17 @@ impl Redirector {
             Ok(records) => return Ok(records.iter().map(|record| Redirect::parse(record)).collect()),
         }
     }
+
+    pub fn find(&self, hostname: &str) -> Result<Redirect, RedirectorError> {
+        let redirects = try!(self.lookup(hostname));
+        let mut valid_redirects: Vec<_> = redirects.into_iter().filter_map(|redirect| redirect.ok()).collect();
+
+        match valid_redirects.len() {
+            0 => return Err(RedirectorError::NoValidRedirect), // TODO
+            _ => return Ok(valid_redirects.remove(0)), // TODO: unwrap
+
+        };
+    }
 }
 
 #[cfg(test)]
