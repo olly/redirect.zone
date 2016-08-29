@@ -21,12 +21,8 @@ macro_rules! bad_request(
 
 fn handler(request: &mut Request) -> IronResult<Response> {
     let host = match request.headers.get::<headers::Host>() {
-        None => {
-            bad_request!("Unknown Host")
-        },
-        // TODO: what does ref do? it compile without. do I need it?
-        // TODO: unwrap
-        Some(header) => url::Host::parse(&header.hostname).ok().unwrap()
+        None => bad_request!("Unknown Host"),
+        Some(header) => url::Host::parse(&header.hostname).ok().expect("invalid hostname"),
     };
 
     let domain: String = match host {
