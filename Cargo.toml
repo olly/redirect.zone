@@ -3,6 +3,9 @@ name = "redirect-zone"
 version = "0.1.0"
 authors = ["Olly Legg <olly@51degrees.net>"]
 
+[features]
+systemd-support = ["systemd"]
+
 [dependencies]
 env_logger = "0.3.4"
 iron = "0.4.0"
@@ -11,3 +14,7 @@ url = "1.1.1"
 
 [dependencies.resolve]
 git = "https://github.com/murarth/resolve"
+
+[dependencies.systemd]
+version = "0.0.10"
+optional = true
