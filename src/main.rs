@@ -8,7 +8,6 @@ use iron::headers;
 use iron::middleware::Handler;
 use iron::prelude::*;
 use iron::status;
-use std::sync::{Arc, Mutex};
 use url::Host::Domain;
 
 mod redirector;
@@ -22,12 +21,12 @@ macro_rules! bad_request(
 );
 
 struct RedirectorHandler {
-    redirector: Arc<Mutex<Redirector>>,
+    redirector: Redirector,
 }
 
 impl RedirectorHandler {
     fn new() -> RedirectorHandler {
-        let redirector = Arc::new(Mutex::new(Redirector::new()));
+        let redirector = Redirector::new();
         return RedirectorHandler{
             redirector: redirector,
         }
@@ -46,10 +45,7 @@ impl Handler for RedirectorHandler {
             _ => bad_request!("Invalid Host")
         };
 
-
-        let redirector = self.redirector.lock().unwrap();
-        let redirect = redirector.find(&domain);
-
+        let redirect = self.redirector.find(&domain);
         match redirect {
             Ok(redirect) => {
                 let url = request.url.to_owned().into_generic_url();

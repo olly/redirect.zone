@@ -10,17 +10,21 @@ use resolve::record::Txt;
 use std;
 use std::collections::HashMap;
 use std::str;
+use std::sync::{Arc, Mutex};
 use url::Url;
 
-trait Resolver: Send {
+trait Resolver: Send + Sync {
     fn resolve(&self, record: &str) -> Result<Vec<String>, ResolverError>;
 }
 
-impl Resolver for DnsResolver {
+impl Resolver for Arc<Mutex<DnsResolver>> {
     fn resolve(&self, record: &str) -> Result<Vec<String>, ResolverError> {
+        // TODO: unwrap
+        let resolver = self.lock().unwrap();
+
         // TODO: can I hold onto enough here, to use &strs rather than String?
         // TODO: unwrap
-        match self.resolve_record::<Txt>(record) {
+        match resolver.resolve_record::<Txt>(record) {
             Ok(records) => {
                 Ok(records.iter().map(|record| str::from_utf8(&record.data).unwrap().to_string()).collect())
             }
@@ -112,7 +116,7 @@ impl Redirector {
             }
         };
 
-        return Redirector { resolver: Box::new(resolver) }
+        return Redirector { resolver: Box::new(Arc::new(Mutex::new(resolver))) }
     }
 
     pub fn lookup(&self, hostname: &str) -> Result<Vec<Result<Redirect, RedirectParseError>>, RedirectorError> {
