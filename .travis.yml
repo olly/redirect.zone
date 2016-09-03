@@ -1,0 +1,10 @@
+language: rust
+rust:
+  - stable
+  - beta
+matrix:
+  allow_failures:
+    - rust: beta
+script:
+  - cargo build --release
+  - cargo test --release
