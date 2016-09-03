@@ -1,5 +1,3 @@
-mod configuration;
-
 extern crate resolve;
 extern crate url;
 
@@ -137,7 +135,6 @@ impl Redirector {
         match valid_redirects.len() {
             0 => return Err(RedirectorError::NoValidRedirect), // TODO
             _ => return Ok(valid_redirects.remove(0)), // TODO: unwrap
-
         };
     }
 }
