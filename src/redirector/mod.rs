@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use std::str;
 use url::Url;
 
-trait Resolver {
+trait Resolver: Send {
     fn resolve(&self, record: &str) -> Result<Vec<String>, ResolverError>;
 }
 
